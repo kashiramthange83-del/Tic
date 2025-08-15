@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Samarth Coaching — Date-wise Attendance</title>
+<style>
+  :root{
+    --pri1: #667eea;
+    --pri2: #764ba2;
+    --accent: #0ea5e9;
+    --good: #28a745;
+    --bad: #dc3545;
+    --late: #f59e0b;
+    --muted: #6b7280;
+    --card: #ffffff;
+    --bgA: rgba(102,126,234,0.12);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background:
+      radial-gradient(800px 400px at 5% 10%, rgba(118,75,162,0.12), transparent 20%),
+      radial-gradient(900px 500px at 95% 90%, rgba(102,126,234,0.08), transparent 18%),
+      linear-gradient(180deg,#fbfdff,#f6f8ff 60%);
+    color:#0f1724;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    padding-bottom:40px;
+  }
+
+  .topbar{
+    position:sticky; top:0; z-index:40;
+    background: linear-gradient(90deg,var(--pri1),var(--pri2));
+    color: white;
+    padding:10px 14px;
+    box-shadow: 0 10px 30px rgba(102,126,234,0.12);
+    display:flex; align-items:center; gap:12px; justify-content:space-between;
+  }
+
+  .brand { display:flex; gap:12px; align-items:center; }
+  .logo {
+    width:48px; height:48px; border-radius:12px; overflow:hidden;
+    background:linear-gradient(135deg,#fff, rgba(255,255,255,0.15));
+    box-shadow:0 8px 20px rgba(0,0,0,0.12);
+    transform: scale(.92); opacity:0; animation:logoIn .6s cubic-bezier(.2,.9,.2,1) forwards .12s;
+  }
+  .logo img{width:100%;height:100%;object-fit:cover;display:block}
+  @keyframes logoIn { to{ opacity:1; transform:scale(1) } }
+
+  .appname{font-weight:800; letter-spacing:.2px; font-size:16px}
+  .top-actions{display:flex; gap:8px; align-items:center}
+
+  .backbtn{
+    display:none;
+    background: rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.15);
+    color:#fff; padding:8px 10px; border-radius:10px; cursor:pointer; font-weight:700;
+  }
+  .backbtn.show{display:inline-flex; align-items:center}
+
+  .pdfbtn{
+    background: rgba(0,0,0,0.1); border:none; color:#fff; padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:700;
+  }
+
+  .container{max-width:1100px; margin:18px auto; padding:0 14px}
+
+  .tabs{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap}
+  .tab-btn{
+    flex:1; min-width:120px; padding:10px 14px; border-radius:12px; font-weight:700; border:none; cursor:pointer;
+    color:var(--pri1); background:linear-gradient(180deg, rgba(102,126,234,0.06), rgba(118,75,162,0.03));
+    box-shadow: 0 6px 18px rgba(102,126,234,0.04);
+    transition: all .18s ease;
+  }
+  .tab-btn.active{ background: linear-gradient(90deg,var(--pri1),var(--pri2)); color:#fff; transform:translateY(-3px); box-shadow:0 18px 40px rgba(118,75,162,0.12) }
+
+  .content{ background: var(--card); border-radius:16px; padding:18px; box-shadow: 0 15px 40px rgba(2,6,23,0.06) }
+
+  .section{ display:none; opacity:0; transform:translateY(6px); transition:.2s }
+  .section.active{ display:block; opacity:1; transform:translateY(0) }
+
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:12px}
+  .stat-card{ background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.06)); padding:14px; border-radius:14px; text-align:center; border:1px solid rgba(118,75,162,0.04)}
+  .stat-number{ font-size:26px; font-weight:800; color:var(--pri1) }
+  .stat-label{ color:var(--muted); font-size:13px }
+
+  .card{ background:#fff; border-radius:12px; padding:12px; box-shadow:0 6px 18px rgba(12,20,50,0.04); border-left:4px solid var(--pri1) }
+
+  .student-card{ display:flex; justify-content:space-between; align-items:center; padding:12px; background:#fbfdff; border-radius:10px; margin-bottom:10px; border-left:4px solid var(--good) }
+
+  .attendance-grid{ display:grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap:12px; margin-top:10px }
+
+  .att-card{ background:#f8fafc; padding:14px; border-radius:12px; cursor:pointer; transition: all .12s ease; border:3px solid transparent; box-shadow:0 6px 18px rgba(12,20,50,0.03) }
+  .att-card:hover{ transform:translateY(-4px); box-shadow:0 20px 40px rgba(12,20,50,0.06) }
+  .present{ border-color: var(--good); background: linear-gradient(180deg,#e6ffed,#f0fff4) }
+  .absent{ border-color: var(--bad); background: linear-gradient(180deg,#fff1f0,#fff6f6) }
+  .late{ border-color: var(--late); background: linear-gradient(180deg,#fff8e6,#fffdf5) }
+  .excused{ border-color: #9ca3af; background: linear-gradient(180deg,#f5f6f7,#fbfbfb) }
+
+  label{ display:block; font-weight:700; margin-bottom:6px; color:var(--muted) }
+  input, select{ width:100%; padding:12px 14px; border-radius:10px; border:2px solid #eef2ff; font-size:15px }
+  input:focus, select:focus{ outline:none; border-color:var(--pri1) }
+
+  .tools{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px }
+  .btn{ border:none; padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:800 }
+  .btn.primary{ background: linear-gradient(90deg,var(--pri1),var(--pri2)); color:#fff }
+  .btn.sec{ background:#eef2ff; color:var(--pri1); font-weight:700 }
+  .btn.green{ background: var(--good); color:#fff }
+  .btn.red{ background: var(--bad); color:#fff }
+  .btn.dark{ background:#0b1324; color:#fff }
+
+  .muted{ color:var(--muted); font-size:13px }
+
+  .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(2,6,23,0.45); z-index:80 }
+  .modal.active{ display:flex }
+  .modal-content{ background:#fff; border-radius:14px; width:92%; max-width:540px; padding:18px; max-height:88vh; overflow:auto }
+
+  .toast{ position:fixed; left:50%; transform:translateX(-50%); bottom:18px; background:var(--good); color:#fff; padding:10px 14px; border-radius:12px; font-weight:800; display:none; z-index:90 }
+
+  @media(max-width:720px){
+    .topbar{ padding:8px }
+    .logo{ width:40px; height:40px }
+    .tabs{ gap:6px }
+    .attendance-grid{ grid-template-columns: 1fr }
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo" title="Samarth Coaching Classes">
+        <img id="logoImg" alt="logo">
+      </div>
+      <div style="display:flex;flex-direction:column">
+        <div style="font-weight:800; font-size:16px; color:#fff">Samarth Coaching Classes</div>
+        <div style="font-size:12px; color:rgba(255,255,255,0.9)">Bidkin — Date-wise Attendance</div>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <button id="topBack" class="backbtn" onclick="goBack()">← Back</button>
+      <button id="topPDF" class="pdfbtn" onclick="quickPDF()" title="Download PDF">⬇ PDF</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 Dashboard</button>
+      <button class="tab-btn" data-tab="students" onclick="switchTab('students')">👥 Students</button>
+      <button class="tab-btn" data-tab="attendance" onclick="switchTab('attendance')">✅ Attendance</button>
+      <button class="tab-btn" data-tab="reports" onclick="switchTab('reports')">📋 Reports</button>
+      <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ Settings</button>
+    </div>
+
+    <div class="content">
+      <!-- Dashboard -->
+      <section id="dashboard" class="section active">
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-number" id="statStudents">0</div>
+            <div class="stat-label">Total Students</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="statDays">0</div>
+            <div class="stat-label">Attendance Days</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="statToday">0%</div>
+            <div class="stat-label">Today's Attendance</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="statOverall">0%</div>
+            <div class="stat-label">Overall Attendance</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom:8px">Recent Dates</h3>
+          <div id="recentDates"></div>
+        </div>
+      </section>
+
+      <!-- Students -->
+      <section id="students" class="section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h2>👥 Student Management</h2>
+          <button class="btn primary" onclick="openModal('addStudentModal')">➕ Add Student</button>
+        </div>
+        <div>
+          <input id="searchStudent" placeholder="Search name / roll / class" oninput="renderStudents()" style="padding:12px;border-radius:10px;border:1px solid #eef2ff;width:100%;margin-bottom:10px">
+          <div id="studentsList"></div>
+        </div>
+      </section>
+
+      <!-- Attendance -->
+      <section id="attendance" class="section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <h2>✅ Mark Attendance</h2>
+            <div style="display:flex; gap:8px; align-items:center; margin-top:6px">
+              <div>
+                <label style="font-weight:700;color:var(--muted)">Pick date</label>
+                <input type="date" id="attDate" onchange="loadPendingForDate()" />
+              </div>
+              <div style="margin-left:8px;">
+                <button class="btn sec" onclick="goToToday()">📅 Today</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="text-align:right">
+            <button class="backbtn show" onclick="goBack()">← Back</button>
+          </div>
+        </div>
+
+        <div class="card" id="unsavedBar" style="display:none;border-left:4px solid var(--pri1);margin-bottom:12px">
+          <strong>Unsaved changes</strong>
+          <div style="margin-top:8px" class="tools">
+            <button class="btn primary" onclick="saveAttendance()">💾 Save Attendance</button>
+            <button class="btn sec" onclick="discardChanges()">↩ Discard</button>
+            <button class="btn dark" onclick="pdfForDate()">⬇ Download PDF (this date)</button>
+            <button class="btn green" onclick="shareAttendanceWhatsApp()">📲 WhatsApp Share</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <select id="classFilter" onchange="renderAttendance()" style="min-width:200px;padding:10px;border-radius:10px;border:1px solid #eef2ff">
+            <option value="">Filter by class</option>
+          </select>
+          <input id="nameFilter" placeholder="Search name/roll" oninput="renderAttendance()" style="padding:10px;border-radius:10px;border:1px solid #eef2ff;flex:1">
+          <div style="margin-left:auto">
+            <button class="btn green" onclick="markAll('present')">Mark All Present</button>
+            <button class="btn red" onclick="markAll('absent')">Mark All Absent</button>
+          </div>
+        </div>
+
+        <div id="attendanceGrid" class="attendance-grid"></div>
+      </section>
+
+      <!-- Reports -->
+      <section id="reports" class="section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <h2>📋 Reports & Export</h2>
+            <div style="display:flex; gap:8px; margin-top:6px">
+              <div><label class="muted">From</label><input type="date" id="repFrom"></div>
+              <div><label class="muted">To</label><input type="date" id="repTo"></div>
+              <div style="min-width:160px"><label class="muted">Class</label><select id="repClass"></select></div>
+              <div style="min-width:220px"><label class="muted">Student</label><select id="repStudent"></select></div>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <button class="backbtn show" onclick="goBack()">← Back</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button class="btn primary" onclick="generateReport()">Generate</button>
+          <button class="btn dark" onclick="downloadReportPDF()">⬇ Download PDF</button>
+          <button class="btn green" onclick="shareReportWhatsApp()">📲 WhatsApp Share</button>
+          <button class="btn" onclick="exportCSV()">Export CSV</button>
+          <button class="btn sec" onclick="exportJSON()">Export JSON</button>
+        </div>
+
+        <div class="card">
+          <strong>Summary</strong>
+          <div id="repSummary" style="margin-top:8px;font-family:ui-monospace,Menlo,Consolas,monospace"></div>
+        </div>
+
+        <div id="repTableWrap" style="margin-top:12px;overflow:auto"></div>
+      </section>
+
+      <!-- Settings -->
+      <section id="settings" class="section">
+        <h2>⚙️ Settings</h2>
+        <div class="card">
+          <strong>Upload logo (optional)</strong>
+          <p class="muted">Your logo appears in the top bar and on PDFs. It is saved locally (no servers).</p>
+          <input type="file" accept="image/*" onchange="handleLogoUpload(event)" />
+          <div style="margin-top:8px" class="tools">
+            <button class="btn sec" onclick="clearLogo()">Remove Logo</button>
+            <button class="btn" onclick="createBackup()">💾 Create Backup</button>
+            <label class="muted" style="margin-left:8px">Restore JSON: <input type="file" accept="application/json" onchange="restoreBackupFile(event)" /></label>
+          </div>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <strong>Developer info</strong>
+          <p class="muted">Data keys: attendance_students, attendance_records, attendance_logo</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Add Student Modal -->
+  <div id="addStudentModal" class="modal">
+    <div class="modal-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <h3 id="studentModalTitle">Add Student</h3>
+        <button class="btn sec" onclick="closeModal('addStudentModal')">✖</button>
+      </div>
+      <form onsubmit="submitStudent(event)">
+        <input type="hidden" id="stId">
+        <label>Student Name *</label><input id="stName" required />
+        <label style="margin-top:8px">Roll Number *</label><input id="stRoll" required />
+        <label style="margin-top:8px">Class *</label><input id="stClass" required />
+        <label style="margin-top:8px">Parent Name *</label><input id="stPName" required />
+        <label style="margin-top:8px">Parent Phone *</label><input id="stPhone" required />
+        <label style="margin-top:8px">Parent Email</label><input id="stEmail" type="email" />
+        <div style="margin-top:12px; text-align:right">
+          <button class="btn primary">💾 Save Student</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">✅ Saved</div>
+
+<script>
+/* =========================
+   Storage keys & state
+========================= */
+const LS_STUDENTS = 'attendance_students';
+const LS_RECORDS  = 'attendance_records';
+const LS_LOGO     = 'attendance_logo';
+
+let students = [];
+let attendance = {};
+let pendingMap = null; // unsaved map for currently selected date
+let currentTab = 'dashboard';
+
+/* =========================
+   Helpers
+========================= */
+const todayStr = () => new Date().toISOString().slice(0,10);
+const fmtDate = d => new Date(d+'T00:00:00').toLocaleDateString();
+function uniq(arr){ return [...new Set(arr)]; }
+function sortDatesDesc(arr){ return [...arr].sort((a,b)=> a<b?1:-1); }
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2000); }
+
+/* =========================
+   Load / Save
+========================= */
+function loadAll(){
+  try{ students = JSON.parse(localStorage.getItem(LS_STUDENTS) || '[]'); }catch{ students = []; }
+  try{ attendance = JSON.parse(localStorage.getItem(LS_RECORDS) || '{}'); }catch{ attendance = {}; }
+
+  // load logo if present
+  const logo = localStorage.getItem(LS_LOGO) || '';
+  document.getElementById('logoImg').src = logo || defaultLogoSVG();
+}
+function saveAll(){
+  localStorage.setItem(LS_STUDENTS, JSON.stringify(students));
+  localStorage.setItem(LS_RECORDS, JSON.stringify(attendance));
+}
+
+/* =========================
+   Default sample seed (if empty)
+========================= */
+function seedIfEmpty(){
+  if(students.length===0){
+    students = [
+      {id:'s1', name:'Rahul Sharma', rollNumber:'SC001', class:'10th', parentName:'Rakesh Sharma', parentPhone:'+91-9876543210', parentEmail:''},
+      {id:'s2', name:'Priya Patel',  rollNumber:'SC002', class:'12th', parentName:'Sunita Patel',  parentPhone:'+91-9876543211', parentEmail:''},
+      {id:'s3', name:'Amit Kumar',   rollNumber:'SC003', class:'11th', parentName:'Suresh Kumar', parentPhone:'+91-9876543212', parentEmail:''}
+    ];
+  }
+  if(Object.keys(attendance).length===0){
+    const d1 = todayStr();
+    const d0 = (new Date(Date.now()-86400000)).toISOString().slice(0,10);
+    attendance[d0] = { s1: 'present', s2: 'absent', s3: 'late' };
+    attendance[d1] = { s1: 'present', s2: 'present', s3: 'absent' };
+  }
+  saveAll();
+}
+
+/* =========================
+   UI: tabs + nav
+========================= */
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(tab).classList.add('active');
+
+  // topbar buttons visibility
+  const back = document.getElementById('topBack');
+  const pdf  = document.getElementById('topPDF');
+  if(tab === 'dashboard'){ back.classList.remove('show'); pdf.style.display='none'; updateDashboard(); }
+  else { back.classList.add('show'); pdf.style.display='inline-block'; }
+
+  if(tab === 'students') renderStudents();
+  if(tab === 'attendance') { populateClassFilter(); loadPendingForDate(); renderAttendance(); }
+  if(tab === 'reports') { populateReportFilters(); generateReport(); }
+  if(tab === 'settings') {} // nothing specific
+}
+function goBack(){ switchTab('dashboard'); }
+
+/* =========================
+   Dashboard
+========================= */
+function updateDashboard(){
+  document.getElementById('statStudents').textContent = students.length;
+  document.getElementById('statDays').textContent = Object.keys(attendance).length;
+
+  const t = todayStr();
+  const rec = attendance[t] || {};
+  const total = students.length;
+  const presentCount = Object.values(rec).filter(s=>s==='present' || s==='late').length;
+  document.getElementById('statToday').textContent = total ? Math.round(presentCount/total*100) + '%' : '0%';
+
+  let overallPresent = 0, overallTotal = 0;
+  Object.values(attendance).forEach(map=>{
+    Object.values(map).forEach(s=>{
+      overallTotal++;
+      if(s==='present' || s==='late') overallPresent++;
+    });
+  });
+  document.getElementById('statOverall').textContent = overallTotal ? Math.round(overallPresent/overallTotal*100) + '%' : '0%';
+
+  // recent dates (clean: Open + Delete)
+  const recent = sortDatesDesc(Object.keys(attendance)).slice(0,3);
+  const wrap = document.getElementById('recentDates');
+  if(recent.length === 0){
+    wrap.innerHTML = '<div class="muted">No dates yet. Go to Attendance → Add Date.</div>';
+    return;
+  }
+
+  wrap.innerHTML = recent.map(d=>{
+    const m = attendance[d] || {};
+    const p = Object.values(m).filter(s=>s==='present' || s==='late').length;
+    return `<div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <strong>${fmtDate(d)}</strong>
+        <div class="muted" style="margin-top:6px">${p}/${students.length} marked</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn sec" onclick="jumpToDate('${d}')">Open</button>
+        <button class="btn red" onclick="deleteDate('${d}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function jumpToDate(d){
+  document.getElementById('attDate').value = d;
+  switchTab('attendance');
+  loadPendingForDate();
+  renderAttendance();
+}
+function deleteDate(d){
+  if(!confirm(`Delete attendance for ${fmtDate(d)}?`)) return;
+  delete attendance[d];
+  if(pendingMap && document.getElementById('attDate').value === d) pendingMap = null;
+  saveAll(); updateDashboard(); showToast('✅ Date deleted');
+}
+
+/* =========================
+   Students
+========================= */
+function renderStudents(){
+  const q = (document.getElementById('searchStudent')?.value || '').trim().toLowerCase();
+  const list = document.getElementById('studentsList');
+  let arr = students;
+  if(q) arr = students.filter(s => s.name.toLowerCase().includes(q) || s.rollNumber.toLowerCase().includes(q) || (s.class || '').toLowerCase().includes(q));
+  if(arr.length === 0){ list.innerHTML = '<div class="muted">No students. Click "Add Student".</div>'; return; }
+  list.innerHTML = arr.map(s=>{
+    return `<div class="student-card">
+      <div>
+        <div style="font-weight:800">${s.name} <span class="muted">(${s.rollNumber})</span></div>
+        <div class="muted">Class ${s.class} • Parent: ${s.parentName} • ${s.parentPhone}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px">
+          <button class="btn sec" onclick="openEdit('${s.id}')">✏️</button>
+          <button class="btn red" onclick="deleteStudent('${s.id}')">🗑️</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openModal(id){ document.getElementById(id).classList.add('active'); }
+function closeModal(id){ document.getElementById(id).classList.remove('active'); document.querySelector('#'+id+' form')?.reset(); document.getElementById('stId').value=''; document.getElementById('studentModalTitle').textContent='Add Student'; }
+function openEdit(id){
+  const s = students.find(x=>x.id===id); if(!s) return;
+  document.getElementById('studentModalTitle').textContent = 'Edit Student';
+  document.getElementById('stId').value = s.id;
+  document.getElementById('stName').value = s.name;
+  document.getElementById('stRoll').value = s.rollNumber;
+  document.getElementById('stClass').value = s.class;
+  document.getElementById('stPName').value = s.parentName;
+  document.getElementById('stPhone').value = s.parentPhone;
+  document.getElementById('stEmail').value = s.parentEmail || '';
+  openModal('addStudentModal');
+}
+function submitStudent(e){
+  e.preventDefault();
+  const id = (document.getElementById('stId').value || '').trim();
+  const s = {
+    id: id || String(Date.now()),
+    name: document.getElementById('stName').value.trim(),
+    rollNumber: document.getElementById('stRoll').value.trim(),
+    class: document.getElementById('stClass').value.trim(),
+    parentName: document.getElementById('stPName').value.trim(),
+    parentPhone: document.getElementById('stPhone').value.trim(),
+    parentEmail: document.getElementById('stEmail').value.trim()
+  };
+  if(!s.name || !s.rollNumber || !s.class || !s.parentName || !s.parentPhone){ alert('Please fill required fields'); return; }
+  const dup = students.find(x => x.rollNumber.toLowerCase() === s.rollNumber.toLowerCase() && x.id !== s.id);
+  if(dup){ alert('Roll number already exists'); return; }
+  if(id){
+    const idx = students.findIndex(x=>x.id===id); if(idx>-1) students[idx] = s;
+  } else students.push(s);
+  saveAll(); closeModal('addStudentModal'); renderStudents(); showToast('✅ Student saved');
+}
+
+/* =========================
+   Attendance (manual save)
+========================= */
+function populateClassFilter(){
+  const sel = document.getElementById('classFilter');
+  const classes = uniq(students.map(s=>s.class).filter(Boolean));
+  sel.innerHTML = `<option value="">Filter by class</option>` + classes.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+function loadPendingForDate(){
+  const d = document.getElementById('attDate').value || todayStr();
+  if(!attendance[d]) attendance[d] = {};
+  pendingMap = JSON.parse(JSON.stringify(attendance[d] || {})); // deep copy
+  toggleUnsaved(false);
+}
+function goToToday(){ document.getElementById('attDate').value = todayStr(); loadPendingForDate(); renderAttendance(); }
+function renderAttendance(){
+  const date = document.getElementById('attDate').value || todayStr();
+  if(!attendance[date]) attendance[date] = {};
+  if(!pendingMap) loadPendingForDate();
+  const map = pendingMap;
+
+  const cls = (document.getElementById('classFilter')?.value) || '';
+  const q = (document.getElementById('nameFilter')?.value || '').toLowerCase().trim();
+
+  let list = students;
+  if(cls) list = list.filter(s => s.class === cls);
+  if(q) list = list.filter(s => s.name.toLowerCase().includes(q) || s.rollNumber.toLowerCase().includes(q));
+
+  list.forEach(s => { if(!map[s.id]) map[s.id] = 'absent'; });
+
+  const grid = document.getElementById('attendanceGrid');
+  if(list.length === 0){ grid.innerHTML = `<div class="muted">No students to show. Add students or clear filters.</div>`; return; }
+
+  grid.innerHTML = list.map(s=>{
+    const st = map[s.id] || 'absent';
+    return `<div class="att-card ${st}" onclick="cycleStatus('${s.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:800">${s.name}</div>
+          <div class="muted">Roll: ${s.rollNumber} • Class ${s.class}</div>
+        </div>
+        <div style="text-align:right;font-weight:800;text-transform:uppercase">${statusIcon(st)} ${st}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function statusIcon(s){ return {present:'✅', absent:'❌', late:'⏰', excused:'📝'}[s] || '❌'; }
+function cycleStatus(sid){
+  const d = document.getElementById('attDate').value || todayStr();
+  const curr = pendingMap[sid] || 'absent';
+  const order = ['absent','present','late','excused'];
+  const next = order[(order.indexOf(curr) + 1) % order.length];
+  pendingMap[sid] = next;
+  toggleUnsaved(true);
+  renderAttendance();
+}
+function markAll(target){
+  const cls = (document.getElementById('classFilter')?.value) || '';
+  const q = (document.getElementById('nameFilter')?.value || '').toLowerCase().trim();
+  let list = students;
+  if(cls) list = list.filter(s => s.class === cls);
+  if(q) list = list.filter(s => s.name.toLowerCase().includes(q) || s.rollNumber.toLowerCase().includes(q));
+  list.forEach(s => pendingMap[s.id] = target);
+  toggleUnsaved(true);
+  renderAttendance();
+}
+function toggleUnsaved(show){ document.getElementById('unsavedBar').style.display = show ? 'block' : 'none'; }
+function saveAttendance(){
+  const d = document.getElementById('attDate').value || todayStr();
+  attendance[d] = JSON.parse(JSON.stringify(pendingMap || {}));
+  saveAll(); toggleUnsaved(false); showToast('✅ Attendance saved'); updateDashboard();
+}
+function discardChanges(){ const d=document.getElementById('attDate').value || todayStr(); loadPendingForDate(); renderAttendance(); showToast('⚠️ Changes discarded'); }
+
+/* =========================
+   Reports & Export
+========================= */
+function populateReportFilters(){
+  const cSel = document.getElementById('repClass');
+  const sSel = document.getElementById('repStudent');
+  const classes = uniq(students.map(s=>s.class).filter(Boolean)).sort();
+  cSel.innerHTML = `<option value="">All classes</option>` + classes.map(c=>`<option>${c}</option>`).join('');
+  sSel.innerHTML = `<option value="">All students</option>` + students.map(s=>`<option value="${s.id}">${s.name} (${s.rollNumber})</option>`).join('');
+  const dates = Object.keys(attendance);
+  if(dates.length){
+    const min = dates.reduce((a,b)=>a<b?a:b);
+    const max = dates.reduce((a,b)=>a>b?a:b);
+    document.getElementById('repFrom').value = min; document.getElementById('repTo').value = max;
+  } else {
+    document.getElementById('repFrom').value = todayStr(); document.getElementById('repTo').value = todayStr();
+  }
+}
+function generateReport(){
+  const from = document.getElementById('repFrom').value || '0000-01-01';
+  const to   = document.getElementById('repTo').value || '9999-12-31';
+  const cls  = document.getElementById('repClass').value || '';
+  const sid  = document.getElementById('repStudent').value || '';
+  const dates = Object.keys(attendance).filter(d => d>=from && d<=to).sort();
+  const filtered = students.filter(s => (!cls || s.class===cls) && (!sid || s.id===sid));
+
+  // summary counts
+  let summary = {present:0, late:0, absent:0, excused:0, total:0};
+  filtered.forEach(s=>{
+    dates.forEach(d=>{
+      const st = attendance[d]?.[s.id];
+      if(st){ summary[st] = (summary[st]||0) + 1; summary.total++; }
+    });
+  });
+  const rate = summary.total ? Math.round(((summary.present + summary.late)/summary.total) * 100) : 0;
+  document.getElementById('repSummary').textContent = `Dates: ${dates.length} | Records: ${summary.total} | ✅ ${summary.present} | ⏰ ${summary.late} | ❌ ${summary.absent} | 📝 ${summary.excused} | Rate: ${rate}%`;
+
+  // table
+  let html = `<div id="reportArea"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="padding:8px;border:1px solid #e6eefb">Student</th>`;
+  dates.forEach(d=> html += `<th style="padding:8px;border:1px solid #e6eefb">${fmtDate(d)}</th>`);
+  html += `<th style="padding:8px;border:1px solid #e6eefb">Rate</th></tr></thead><tbody>`;
+  filtered.forEach(s=>{
+    let pres = 0, tot = 0;
+    html += `<tr><td style="padding:8px;border:1px solid #eef6ff">${s.name} <div class="muted">${s.rollNumber} / ${s.class}</div></td>`;
+    dates.forEach(d=>{
+      const st = attendance[d]?.[s.id];
+      if(st){ tot++; if(st==='present' || st==='late') pres++; }
+      const icon = st ? ({present:'✅',late:'⏰',absent:'❌',excused:'📝'}[st]) : '';
+      html += `<td style="padding:8px;border:1px solid #eef6ff;text-align:center">${icon}</td>`;
+    });
+    const pct = tot ? Math.round((pres/tot)*100) : 0;
+    html += `<td style="padding:8px;border:1px solid #eef6ff;text-align:center">${pct}%</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+  document.getElementById('repTableWrap').innerHTML = html;
+}
+
+/* Export: JSON / CSV */
+function exportJSON(){
+  const data = { students, attendance, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data,null,2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `samarth-attendance-${todayStr()}.json`; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+function exportCSV(){
+  const rows = [['Student','Class','Roll','Date','Status']];
+  const dates = Object.keys(attendance).sort();
+  students.forEach(s=>{
+    dates.forEach(d=>{
+      const st = attendance[d]?.[s.id];
+      if(st) rows.push([s.name, s.class, s.rollNumber, d, st]);
+    });
+  });
+  const csv = rows.map(r => r.map(cell => {
+    const v = (cell ?? '').toString();
+    return /[",\n]/.test(v) ? `"${v.replace(/"/g,'""')}"` : v;
+  }).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `attendance-${todayStr()}.csv`; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* =========================
+   PDF / Print helpers
+========================= */
+function openPrintHTML(title, html){
+  const logo = localStorage.getItem(LS_LOGO) || '';
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <html><head><title>${title}</title>
+    <style>
+      body{font-family:Arial,Helvetica,sans-serif;margin:22px;color:#111}
+      .hdr{display:flex;align-items:center;gap:12px}
+      .hdr img{width:56px;height:56px;border-radius:10px}
+      table{width:100%;border-collapse:collapse;margin-top:10px}
+      th,td{border:1px solid #ddd;padding:6px;text-align:left}
+      th{background:#f4f7ff}
+    </style>
+    </head><body>
+      <div class="hdr">${logo?`<img src="${logo}" />`:''}<div><h2>Samarth Coaching Classes</h2><div style="color:#666">${new Date().toLocaleString()}</div></div></div>
+      <div style="margin-top:12px">${html}</div>
+    </body></html>`);
+  win.document.close(); win.focus(); setTimeout(()=>win.print(),400);
+}
+function pdfForDate(dateOpt){
+  const d = dateOpt || document.getElementById('attDate').value || todayStr();
+  const map = attendance[d] || {};
+  let rows = students.map(s=>`<tr><td>${s.name}</td><td>${s.class}</td><td>${s.rollNumber}</td><td>${map[s.id] || ''}</td></tr>`).join('');
+  const html = `<h3>Attendance — ${fmtDate(d)}</h3><table><thead><tr><th>Name</th><th>Class</th><th>Roll</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+  openPrintHTML(`Attendance ${d}`, html);
+}
+function downloadReportPDF(){
+  const area = document.getElementById('reportArea');
+  if(!area){ alert('Please generate a report first'); return; }
+  openPrintHTML('Attendance Report', area.outerHTML);
+}
+function quickPDF(){
+  if(currentTab === 'attendance') pdfForDate();
+  else if(currentTab === 'reports') downloadReportPDF();
+  else showToast('Switch to Attendance or Reports to download PDF');
+}
+
+/* =========================
+   WhatsApp share (text summary)
+========================= */
+function shareAttendanceWhatsApp(){
+  const d = document.getElementById('attDate').value || todayStr();
+  const map = attendance[d] || {};
+  let msg = `Attendance — ${fmtDate(d)}%0A`;
+  students.forEach(s => {
+    const st = map[s.id] || 'Not marked';
+    msg += `${s.name} (${s.rollNumber}) - ${st}%0A`;
+  });
+  const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+}
+function shareReportWhatsApp(){
+  const from = document.getElementById('repFrom').value || '';
+  const to = document.getElementById('repTo').value || '';
+  const cls = document.getElementById('repClass').value || '';
+  const sid = document.getElementById('repStudent').value || '';
+  const dates = Object.keys(attendance).filter(d => (!from || d>=from) && (!to || d<=to)).sort();
+  const filtered = students.filter(s => (!cls || s.class === cls) && (!sid || s.id === sid));
+  let msg = `Attendance Report (${from} → ${to})%0A`;
+  filtered.forEach(s => {
+    msg += `%0A${s.name} (${s.rollNumber}): `;
+    dates.forEach(d => {
+      const st = attendance[d]?.[s.id];
+      msg += st ? (st[0].toUpperCase()) : '-';
+    });
+  });
+  const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+}
+
+/* =========================
+   Backup / Restore / Logo
+========================= */
+function createBackup(){
+  const backup = { students, attendance, timestamp: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(backup,null,2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `samarth-backup-${todayStr()}.json`; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+function restoreBackupFile(e){
+  const f = e.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try{
+      const obj = JSON.parse(rd.result||'{}');
+      if(!obj.students || !obj.attendance) throw new Error('Invalid backup file');
+      students = obj.students; attendance = obj.attendance; saveAll(); switchTab('dashboard'); updateDashboard(); showToast('✅ Restored');
+    }catch(err){ alert('Restore failed: '+err.message); }
+  };
+  rd.readAsText(f);
+}
+
+function handleLogoUpload(e){
+  const f = e.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    localStorage.setItem(LS_LOGO, rd.result);
+    document.getElementById('logoImg').src = rd.result;
+    showToast('✅ Logo updated');
+  };
+  rd.readAsDataURL(f);
+}
+function clearLogo(){ localStorage.removeItem(LS_LOGO); document.getElementById('logoImg').src = defaultLogoSVG(); showToast('Logo removed'); }
+
+/* =========================
+   Init + Boot
+========================= */
+function defaultLogoSVG(){
+  // small inline SVG data URL (keeps topbar from being empty)
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>
+    <defs><linearGradient id='g' x1='0' x2='1'><stop offset='0' stop-color='#667eea'/><stop offset='1' stop-color='#764ba2'/></linearGradient></defs>
+    <rect rx='14' width='64' height='64' fill='white'/>
+    <circle cx='22' cy='24' r='6' fill='#667eea'/>
+    <circle cx='42' cy='24' r='6' fill='#764ba2'/>
+    <path d='M14 44c10-14 38-14 46 0' stroke='#667eea' stroke-width='3' fill='none'/>
+  </svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  loadAll();
+  seedIfEmpty();
+  saveAll();
+  switchTab('dashboard');
+  // set defaults
+  if(!document.getElementById('attDate').value) document.getElementById('attDate').value = todayStr();
+  loadPendingForDate();
+  renderAttendance();
+  renderStudents();
+  populateClassFilter();
+});
+
+/* expose functions used inline */
+window.switchTab = switchTab;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.submitStudent = submitStudent;
+window.openEdit = openEdit;
+window.deleteStudent = function(id){ if(confirm('Delete student?')){ students = students.filter(s=>s.id!==id); Object.keys(attendance).forEach(d=>{ if(attendance[d]) delete attendance[d][id]; }); saveAll(); renderStudents(); updateDashboard(); showToast('Deleted'); } };
+window.loadPendingForDate = loadPendingForDate;
+window.renderAttendance = renderAttendance;
+window.cycleStatus = cycleStatus;
+window.markAll = markAll;
+window.saveAttendance = saveAttendance;
+window.discardChanges = discardChanges;
+window.pdfForDate = pdfForDate;
+window.quickPDF = quickPDF;
+window.createBackup = createBackup;
+window.restoreBackupFile = restoreBackupFile;
+window.handleLogoUpload = handleLogoUpload;
+window.clearLogo = clearLogo;
+window.shareAttendanceWhatsApp = shareAttendanceWhatsApp;
+window.shareReportWhatsApp = shareReportWhatsApp;
+window.generateReport = generateReport;
+window.downloadReportPDF = downloadReportPDF;
+window.exportCSV = exportCSV;
+window.exportJSON = exportJSON;
+window.goBack = goBack;
+</script>
+</body>
+</html>
